@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "576285026671",
+    "project_id": "glossarysaya",
+    "storage_bucket": "glossarysaya.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:576285026671:android:113017b542d31ba231a09a",
+        "android_client_info": {
+          "package_name": "com.example.glossarysaya"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDMYVN6TF5Gq5ddXpve091Tl_PAbS31W5w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
