@@ -463,12 +463,12 @@ class SignUpActivity : ComponentActivity() {
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Input tempat dan tanggal lahir
+                    // Input tanggal lahir
                     OutlinedTextField(
                         value = dob,
                         onValueChange = { dob = it },
-                        label = { Text("Tempat, tanggal lahir") },
-                        placeholder = { Text("EX : Jakarta, 01-01-2000") },
+                        label = { Text("Tanggal lahir") },
+                        placeholder = { Text("EX : 01-01-2000") },
                         modifier = Modifier.fillMaxWidth(),
                         readOnly = true,
                         trailingIcon = {

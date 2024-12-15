@@ -34,9 +34,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import coil.compose.rememberAsyncImagePainter
 import com.example.glossarysaya.Quiz.SplashStart
 import com.example.glossarysaya.Quiz.QuizSD
 import com.example.glossarysaya.Quiz.QuizSMA
@@ -72,6 +74,7 @@ fun MainScreen() {
     var userName by remember { mutableStateOf("Hi, User") }
     var showAppInfo by remember { mutableStateOf(false) }
     var userPoints by remember { mutableStateOf(0) }
+    var userProfileImage by remember { mutableStateOf<String?>(null) } // Menyimpan URL gambar profil
 
     // Ambil data user dari FireStore
     LaunchedEffect(Unit) {
@@ -81,6 +84,8 @@ fun MainScreen() {
                     val user = document.toObject(User::class.java)
                     userName = "Hi, ${user?.name ?: "User"}"
                     userPoints = document.getLong("points")?.toInt() ?: 0
+                    userProfileImage = document.getString("profileImage") // Ambil URL gambar profil dari Firestore
+
                     // Tambahkan logika lain sesuai kebutuhan
                 } else {
                     userName = "Hi, User (Data tidak ditemukan)"
@@ -109,7 +114,7 @@ fun MainScreen() {
                         colors = listOf(Color(0xFF381E72), Color(0xFFFFFFFF))
                     )
                 )
-                .padding(16.dp)
+                .padding(20.dp)
         ) {
             Text(
                 text = "GLOSSARY",
@@ -117,7 +122,7 @@ fun MainScreen() {
                 fontSize = 35.sp,
                 color = Color.White
             )
-            Spacer(modifier = Modifier.height(80.dp))
+            Spacer(modifier = Modifier.height(40.dp))
 
             Card(
                 shape = RoundedCornerShape(30.dp),
@@ -142,11 +147,25 @@ fun MainScreen() {
                             color = Color.White
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Image(
-                            painter = painterResource(id = R.drawable.wajah),
+
+                        userProfileImage?.let {
+                            Image(
+                                painter = rememberAsyncImagePainter(it), // Menggunakan URL gambar profil
+                                contentDescription = "Profil",
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape) // Membuat gambar berbentuk bulat
+                                    .clickable {
+                                        val intent = Intent(context, ProfilActivity::class.java)
+                                        context.startActivity(intent)
+                                    }
+                            )
+                        } ?: Image(
+                            painter = painterResource(id = R.drawable.wajah), // Gambar default jika tidak ada URL
                             contentDescription = "Profil",
                             modifier = Modifier
-                                .size(30.dp)
+                                .size(40.dp)
+                                .clip(CircleShape)
                                 .clickable {
                                     val intent = Intent(context, ProfilActivity::class.java)
                                     context.startActivity(intent)
