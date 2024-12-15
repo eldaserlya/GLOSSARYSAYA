@@ -45,16 +45,19 @@ fun QuizHistoryScreen() {
     val context = LocalContext.current
     val sharedPref = context.getSharedPreferences("QuizPrefs", Context.MODE_PRIVATE)
 
-    // Ambil data level 1, 2, 3, 4
+    // Ambil data level 1, 2, 3, 4 dari SharedPreferences
     val level1Data = getLevelData(sharedPref, 1)
     val level2Data = getLevelData(sharedPref, 2)
     val level3Data = getLevelData(sharedPref, 3)
     val level4Data = getLevelData(sharedPref, 4)
 
-    // Total skor dan poin
-    //val totalPoints = level1Data.points + level2Data.points + level3Data.points + level4Data.points
+    // Hitung total skor
     val totalScore = level1Data.score + level2Data.score + level3Data.score + level4Data.score
-    // Simpan total skor ke SharedPreferences
+
+    // Hitung total poin (jumlah dari poin tiap level)
+    val totalPoints = (level1Data.points + level2Data.points + level3Data.points + level4Data.points) / 10
+
+    // Simpan total skor ke SharedPreferences jika perlu
     sharedPref.edit().putInt("total_score", totalScore).apply()
 
     Scaffold(
@@ -129,7 +132,7 @@ fun QuizHistoryScreen() {
 
                 // Menampilkan Total Skor dan Poin
                 Text(
-                    text = "Total Point: $totalScore",
+                    text = "Total Point: $totalPoints",
                     color = Color.Black,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
@@ -139,6 +142,7 @@ fun QuizHistoryScreen() {
         }
     }
 }
+
 
 fun getLevelData(sharedPref: SharedPreferences, level: Int): LevelData {
     val correctAnswers = sharedPref.getInt("level${level}_correct_answers", 0)

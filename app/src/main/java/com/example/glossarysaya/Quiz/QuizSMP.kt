@@ -1,8 +1,9 @@
 package com.example.glossarysaya.Quiz
 
-import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
@@ -21,6 +22,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.glossarysaya.QuizHistoryActivity
 import com.example.glossarysaya.R
+import com.example.glossarysaya.UserScore
+import com.google.api.ResourceDescriptor
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -35,31 +43,7 @@ class QuizSMP : ComponentActivity() {
 
 @Composable
 fun QuizAppSMP(onBackPressed: () -> Unit) {
-    val questions = listOf(
-        QuestionSMP("Seekor kambing memiliki berat badan 30 kg. Jika beratnya bertambah 15%, berapakah beratnya sekarang?", listOf("33 kg", "34.5 kg", "35 kg", "36 kg"), 1),
-        QuestionSMP("Siapakah penulis novel 'Laskar Pelangi'?", listOf("Andrea Hirata", "Tere Liye", "Pramoedya Ananta Toer", "Habiburrahman El Shirazy"), 0),
-        QuestionSMP("Apa rumus kimia dari garam dapur?", listOf("H2O", "CO2", "NaCl", "KCl"), 2),
-        QuestionSMP("Kerajaan Hindu pertama di Indonesia adalah?", listOf("Sriwijaya", "Kutai", "Majapahit", "Tarumanegara"), 1),
-        QuestionSMP("Manakah dari berikut ini yang bukan merupakan jenis energi terbarukan?", listOf("Angin", "Surya", "Minyak Bumi", "Air"), 2),
-        QuestionSMP("Berapa banyak sisi yang dimiliki oleh prisma segitiga?", listOf("5", "6", "7", "8"), 1),
-        QuestionSMP("Siapakah tokoh yang dikenal sebagai 'Bapak Pramuka Indonesia'?", listOf("Soedirman", "Ir. Soekarno", "Sri Sultan Hamengkubuwono IX", "Ki Hajar Dewantara"), 2),
-        QuestionSMP("Apa hasil dari 12 x 8 ÷ 4 + 6?", listOf("18", "24", "36", "42"), 1),
-        QuestionSMP("Choose the correct word: 'She ---- her project before the deadline.'", listOf("complete", "completed", "completes", "completing"), 1),
-        QuestionSMP("Which country is known as the 'Land of the Rising Sun'?", listOf("China", "Japan", "South Korea", "India"), 1),
-        QuestionSMP("Berikut ini adalah planet yang memiliki satelit alami bernama 'Titan'. Planet apakah itu?", listOf("Mars", "Saturnus", "Jupiter", "Neptunus"), 1),
-        QuestionSMP("Siapakah penemu telepon?", listOf("Alexander Graham Bell", "Thomas Edison", "Nikola Tesla", "Michael Faraday"), 0),
-        QuestionSMP("Pancasila pertama kali dirumuskan dalam sidang apa?", listOf("Sidang BPUPKI", "Sidang PPKI", "Sidang KNIP", "Sidang Konstituante"), 0),
-        QuestionSMP("Berapa banyak rusuk yang dimiliki oleh kubus?", listOf("6", "8", "10", "12"), 3),
-        QuestionSMP("Apa kepanjangan dari WHO?", listOf("World Health Organization", "World Human Organization", "World Hope Organization", "World Help Organization"), 0),
-        QuestionSMP("Dalam permainan badminton, berapa poin yang dibutuhkan untuk memenangkan satu game?", listOf("15", "21", "25", "30"), 1),
-        QuestionSMP("Berikut ini adalah contoh bahan bakar fosil, kecuali?", listOf("Minyak Bumi", "Batubara", "Gas Alam", "Angin"), 3),
-        QuestionSMP("Siapakah tokoh yang dikenal sebagai 'Bapak Pendidikan Nasional'?", listOf("Soekarno", "Mohammad Hatta", "Ki Hajar Dewantara", "Kartini"), 2),
-        QuestionSMP("Choose the correct form: 'They ---- to the park every weekend.'", listOf("go", "went", "going", "goes"), 0),
-        QuestionSMP("Apa nama samudra terbesar di dunia?", listOf("Samudra Hindia", "Samudra Atlantik", "Samudra Pasifik", "Samudra Arktik"), 2)
-    )
-
-
-    val randomQuestions = remember { questions.shuffled().take(5) }
+    var questions by remember { mutableStateOf<List<QuizQuestion>>(emptyList()) }
     var currentQuestionIndex by remember { mutableStateOf(0) }
     var selectedAnswerIndex by remember { mutableStateOf<Int?>(null) }
     var answerShown by remember { mutableStateOf(false) }
@@ -68,20 +52,58 @@ fun QuizAppSMP(onBackPressed: () -> Unit) {
     var correctAnswers by remember { mutableStateOf(0) }
     var incorrectAnswers by remember { mutableStateOf(0) }
     var isQuizFinished by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
+    var isQuizStarted by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope() // Menyimpan coroutineScope
 
+    // Setelah kuis selesai di ResultScreen
+    val context = LocalContext.current
+    val sharedPref = context.getSharedPreferences("QuizPrefs", Context.MODE_PRIVATE)
+    val editor = sharedPref.edit()
+
+    // Simpan skor dan poin untuk setiap level
+    editor.putInt("level2_score", score)  // Misalnya, untuk level 1
+    editor.putInt("level2_points", score * 10) // Poin bisa berupa skor * faktor tertentu
+    editor.putInt("level2_correct_answers", correctAnswers)
+    editor.putInt("level2_incorrect_answers", incorrectAnswers)
+    editor.apply()
+
+    // Mengambil data soal dari Firebase
+    fun fetchQuestions() {
+        val database = FirebaseDatabase.getInstance().getReference("quizQuestions")
+        database.child("level2").addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val fetchedQuestions = mutableListOf<QuizQuestion>()
+                for (data in snapshot.children) {
+                    val question = data.getValue(QuizQuestion::class.java)
+                    question?.let { fetchedQuestions.add(it) }
+                }
+                questions = fetchedQuestions.shuffled().take(10)
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("FirebaseError", error.message)
+            }
+        })
+    }
+
+    // Memanggil fungsi fetch soal saat pertama kali Compose composable dipanggil
+    LaunchedEffect(Unit) {
+        fetchQuestions()
+    }
+
+    // Fungsi untuk melanjutkan soal berikutnya
     fun goToNextQuestion() {
-        if (currentQuestionIndex < randomQuestions.size - 1) {
+        if (currentQuestionIndex < questions.size - 1) {
             currentQuestionIndex++
             selectedAnswerIndex = null
             answerShown = false
-            timeLeft = 10 // Reset timer
+            timeLeft = 10
         } else {
             isQuizFinished = true
         }
     }
 
-
+    // Timer countdown untuk soal
     LaunchedEffect(currentQuestionIndex) {
         while (timeLeft > 0 && !answerShown) {
             delay(1000L)
@@ -105,89 +127,128 @@ fun QuizAppSMP(onBackPressed: () -> Unit) {
             )
     ) {
         if (isQuizFinished) {
-            ResultScreen(score, correctAnswers, incorrectAnswers)
+            ResultScreenSMP(score, correctAnswers, incorrectAnswers)
         } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
+            if (!isQuizStarted || questions.isEmpty()) {
+                // Tampilkan countdown dan READY!!! sebelum kuis dimulai
+                QuizSplashScreen(onFinish = {
+                    isQuizStarted = true
+                })
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
                 ) {
-                    IconButton(onClick = { onBackPressed() }) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.arrow_back), // Pastikan ada ikon panah di res/drawable
-                            contentDescription = "Kembali",
-                            tint = Color.White
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        IconButton(onClick = { onBackPressed() }) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.arrow_back),
+                                contentDescription = "Kembali",
+                                tint = Color.White
+                            )
+                        }
+                        Spacer(modifier = Modifier.weight(1f))
+                        Image(
+                            painter = painterResource(R.drawable.logo),
+                            contentDescription = "Logo",
+                            modifier = Modifier.size(40.dp)
                         )
                     }
-                    Spacer(modifier = Modifier.weight(1f))
-                    Image(
-                        painter = painterResource(R.drawable.logo), // Pastikan file logo ada di res/drawable
-                        contentDescription = "Logo",
-                        modifier = Modifier.size(40.dp)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Soal ${currentQuestionIndex + 1}/${questions.size}",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
                     )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                Text(
-                    text = "Soal ${currentQuestionIndex + 1}/${randomQuestions.size}",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+                    LinearProgressIndicator(
+                        progress = timeLeft / 10f,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp),
+                        color = Color.Green
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                LinearProgressIndicator(
-                    progress = timeLeft / 10f,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp),
-                    color = Color.Green
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = questions[currentQuestionIndex].question,
+                        fontSize = 20.sp,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                Text(
-                    text = randomQuestions[currentQuestionIndex].question,
-                    fontSize = 20.sp,
-                    color = Color.White
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+                    questions[currentQuestionIndex].options.forEachIndexed { index, answer ->
+                        AnswerButtonSD(
+                            answer = answer,
+                            isSelected = selectedAnswerIndex == index,
+                            isCorrect = answer == questions[currentQuestionIndex].correctAnswer,
+                            showAnswer = answerShown,
+                            onClick = {
+                                if (!answerShown) {
+                                    selectedAnswerIndex = index
+                                    answerShown = true
+                                    if (answer == questions[currentQuestionIndex].correctAnswer) {
+                                        score += 10
+                                        correctAnswers++
+                                    } else {
+                                        incorrectAnswers++
+                                    }
 
-                randomQuestions[currentQuestionIndex].answers.forEachIndexed { index, answer ->
-                    AnswerButtonSD(
-                        answer = answer,
-                        isSelected = selectedAnswerIndex == index,
-                        isCorrect = index == randomQuestions[currentQuestionIndex].correctAnswerIndex,
-                        showAnswer = answerShown,
-                        onClick = {
-                            if (!answerShown) {
-                                selectedAnswerIndex = index
-                                answerShown = true
-                                if (index == randomQuestions[currentQuestionIndex].correctAnswerIndex) {
-                                    score += 10
-                                    correctAnswers++
-                                } else {
-                                    incorrectAnswers++
-                                }
-                                scope.launch {
-                                    delay(1000L)
-                                    goToNextQuestion()
+                                    // Menggunakan coroutineScope untuk menunggu selama 3 detik
+                                    coroutineScope.launch {
+                                        delay(3000L)  // Delay untuk menunjukkan jawaban
+                                        goToNextQuestion()
+                                    }
                                 }
                             }
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
                 }
             }
         }
     }
 }
+
+
+
+
 @Composable
 fun ResultScreenSMP(score: Int, correctAnswers: Int, incorrectAnswers: Int) {
     val context = LocalContext.current
+    val sharedPref = context.getSharedPreferences("QuizPrefs", Context.MODE_PRIVATE)
+    val editor = sharedPref.edit()
+
+    // Menghitung akurasi
+    val accuracy = if (correctAnswers + incorrectAnswers > 0) {
+        (correctAnswers.toFloat() / (correctAnswers + incorrectAnswers)) * 100
+    } else {
+        0f
+    }
+
+    // Simpan data ke Firebase
+    val userId = FirebaseAuth.getInstance().currentUser?.uid
+    val database = FirebaseDatabase.getInstance().getReference("users").child(userId ?: "unknown")
+    val userScore = UserScore(score, correctAnswers, incorrectAnswers, accuracy)
+
+    // Menyimpan data ke Firebase
+    database.child("quizResults").push().setValue(userScore)
+        .addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                Log.d("Firebase", "Skor berhasil disimpan ke Firebase")
+            } else {
+                Log.e("Firebase", "Gagal menyimpan skor", task.exception)
+            }
+        }
+
+    // Layout untuk hasil
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -204,6 +265,7 @@ fun ResultScreenSMP(score: Int, correctAnswers: Int, incorrectAnswers: Int) {
         )
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Box untuk menampilkan skor
         Box(
             modifier = Modifier
                 .size(120.dp)
@@ -217,8 +279,10 @@ fun ResultScreenSMP(score: Int, correctAnswers: Int, incorrectAnswers: Int) {
                 color = Color.Black
             )
         }
+
         Spacer(modifier = Modifier.height(24.dp))
 
+        // Menampilkan jumlah jawaban benar dan salah
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
@@ -226,43 +290,73 @@ fun ResultScreenSMP(score: Int, correctAnswers: Int, incorrectAnswers: Int) {
             Box(
                 modifier = Modifier
                     .background(Color.Green, shape = MaterialTheme.shapes.medium)
-                    .padding(16.dp)
+                    .padding(12.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Benar", fontSize = 18.sp, color = Color.White)
-                    Text("$correctAnswers", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                }
+                Text(
+                    text = "Correct: $correctAnswers",
+                    color = Color.White,
+                    fontSize = 16.sp
+                )
             }
-
             Box(
                 modifier = Modifier
                     .background(Color.Red, shape = MaterialTheme.shapes.medium)
-                    .padding(16.dp)
+                    .padding(12.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Salah", fontSize = 18.sp, color = Color.White)
-                    Text("$incorrectAnswers", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                }
+                Text(
+                    text = "Incorrect: $incorrectAnswers",
+                    color = Color.White,
+                    fontSize = 16.sp
+                )
             }
         }
+
         Spacer(modifier = Modifier.height(24.dp))
 
-        Button(onClick = {
-            val intent = Intent(context, QuizSMA::class.java)
-            context.startActivity(intent)
-            (context as? Activity)?.finish()
-        }) {
-            Text("Level Selanjutnya")
+        // Menampilkan akurasi
+        Text(
+            text = "Accuracy: ${accuracy.toInt()}%",
+            fontSize = 18.sp,
+            color = Color.White,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Tombol untuk lanjut ke level berikutnya atau mengulang soal
+        if (accuracy >= 70) {
+            // Tombol untuk lanjut ke level berikutnya
+            Button(
+                onClick = {
+                    // Logika untuk lanjut ke level berikutnya (misalnya ke level2)
+                    context.startActivity(Intent(context, QuizSMA::class.java)) // Menggunakan QuizSD untuk level 2
+                }
+            ) {
+                Text("Next Level")
+            }
+        } else {
+            // Tombol untuk mengulang soal
+            Button(
+                onClick = {
+                    // Logika untuk mengulang soal (kembali ke level yang sama)
+                    context.startActivity(Intent(context, QuizSMP::class.java)) // Mengulang kuis
+                }
+            ) {
+                Text("Ulangi Kuis")
+            }
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        Button(onClick = {
-            val intent = Intent(context, QuizHistoryActivity::class.java)
-            context.startActivity(intent)
-        }) {
-            Text("Lihat Halaman Peringkat")
+        Button(
+            onClick = {
+                context.startActivity(Intent(context, QuizHistoryActivity::class.java)) // Menggunakan QuizSD untuk level 2
+            }
+        ) {
+            Text("Riwayat Peringkat")
         }
     }
 }
+
 
 @Composable
 fun AnswerButtonSMP(
@@ -272,26 +366,26 @@ fun AnswerButtonSMP(
     showAnswer: Boolean,
     onClick: () -> Unit
 ) {
+    // Tentukan warna latar belakang berdasarkan status
     val backgroundColor = when {
-        showAnswer && isCorrect -> Color.Green
-        showAnswer && !isCorrect && isSelected -> Color.Red
-        else -> Color.LightGray
+        showAnswer && isCorrect -> Color.Green // Jawaban benar berwarna hijau
+        showAnswer && !isCorrect -> Color.Red  // Jawaban salah berwarna merah
+        isSelected -> Color.LightGray          // Pilihan yang dipilih berwarna abu-abu
+        else -> Color.White                   // Warna default putih
     }
 
-    Button(
+    TextButton(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .background(backgroundColor),
-        enabled = !showAnswer
+            .background(backgroundColor, shape = MaterialTheme.shapes.medium)
+            .padding(16.dp)
     ) {
-        Text(text = answer, fontSize = 16.sp, color = Color.White)
+        Text(
+            text = answer,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black
+        )
     }
 }
-
-data class QuestionSMP(
-    val question: String,
-    val answers: List<String>,
-    val correctAnswerIndex: Int
-)
-
