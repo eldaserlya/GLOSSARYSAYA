@@ -64,7 +64,7 @@ fun QuizSplashScreen(onFinish: () -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = if (animatedCount > 3) "READY" else "${animatedCount}",
+            text = if (animatedCount > 3) "SIAP!" else "${animatedCount}",
             fontSize = 48.sp,
             fontWeight = FontWeight.Bold
         )
