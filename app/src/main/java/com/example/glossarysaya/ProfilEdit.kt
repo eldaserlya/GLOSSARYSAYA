@@ -34,6 +34,8 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.glossarysaya.ui.theme.GLOSSARYSAYATheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.storage.FirebaseStorage
 import java.util.*
 
@@ -264,27 +266,30 @@ fun ProfilEditCard(
 
 fun saveProfileImage(imageUrl: String) {
     val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
-    val userProfileRef = FirebaseDatabase.getInstance().getReference("users").child(userId)
-    userProfileRef.child("profileImage").setValue(imageUrl)
+    val userProfileRef = FirebaseFirestore.getInstance().collection("users").document(userId)
+
+    userProfileRef.update("profileImage", imageUrl)
         .addOnCompleteListener { task ->
             if (task.isSuccessful) {
-                Log.d("ProfilEdit", "Gambar profil berhasil disimpan")
+                Log.d("ProfilEdit", "Gambar profil berhasil disimpan di Firestore")
             } else {
-                Log.e("ProfilEdit", "Gagal menyimpan gambar profil: ${task.exception?.message}")
+                Log.e("ProfilEdit", "Gagal menyimpan gambar profil di Firestore: ${task.exception?.message}")
             }
         }
 }
 
 fun saveUserProfile(name: String, dateOfBirth: String, gender: String, imageUrl: String?, context: Context) {
     val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
-    val userRef = FirebaseDatabase.getInstance().getReference("users").child(userId)
-    val userProfile = mapOf(
+    val userRef = FirebaseFirestore.getInstance().collection("users").document(userId)
+
+    val userProfile = hashMapOf(
         "name" to name,
         "dateOfBirth" to dateOfBirth,
         "gender" to gender,
         "profileImage" to (imageUrl ?: "")
     )
-    userRef.updateChildren(userProfile).addOnCompleteListener { task ->
+
+    userRef.set(userProfile, SetOptions.merge()).addOnCompleteListener { task ->
         if (task.isSuccessful) {
             Toast.makeText(context, "Profil berhasil disimpan", Toast.LENGTH_SHORT).show()
         } else {
@@ -292,5 +297,4 @@ fun saveUserProfile(name: String, dateOfBirth: String, gender: String, imageUrl:
         }
     }
 }
-
 
