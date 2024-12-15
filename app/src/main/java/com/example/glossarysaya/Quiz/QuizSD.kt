@@ -22,11 +22,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.glossarysaya.QuizHistoryActivity
 import com.example.glossarysaya.R
+import com.example.glossarysaya.UserScore
+import com.google.api.ResourceDescriptor
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.delay
+import android.content.SharedPreferences
 import kotlinx.coroutines.launch
 
 class QuizSD : ComponentActivity() {
@@ -50,9 +54,19 @@ fun QuizAppSD(onBackPressed: () -> Unit) {
     var incorrectAnswers by remember { mutableStateOf(0) }
     var isQuizFinished by remember { mutableStateOf(false) }
     var isQuizStarted by remember { mutableStateOf(false) }
-    var countdownValue by remember { mutableStateOf(3) }
-    var readyText by remember { mutableStateOf("READY!!!") }
-    val scope = rememberCoroutineScope()
+    val coroutineScope = rememberCoroutineScope() // Menyimpan coroutineScope
+    // Setelah kuis selesai di ResultScreen
+    val context = LocalContext.current
+    val sharedPref = context.getSharedPreferences("QuizPrefs", Context.MODE_PRIVATE)
+    val editor = sharedPref.edit()
+
+// Simpan skor dan poin untuk setiap level
+    editor.putInt("level1_score", score)  // Misalnya, untuk level 1
+    editor.putInt("level1_points", score * 10) // Poin bisa berupa skor * faktor tertentu
+    editor.putInt("level1_correct_answers", correctAnswers)
+    editor.putInt("level1_incorrect_answers", incorrectAnswers)
+    editor.apply()
+
 
     // Mengambil data soal dari Firebase
     fun fetchQuestions() {
@@ -64,7 +78,6 @@ fun QuizAppSD(onBackPressed: () -> Unit) {
                     val question = data.getValue(QuizQuestion::class.java)
                     question?.let { fetchedQuestions.add(it) }
                 }
-                // Ambil 10 soal acak dari soal yang ada
                 questions = fetchedQuestions.shuffled().take(10)
             }
 
@@ -79,12 +92,7 @@ fun QuizAppSD(onBackPressed: () -> Unit) {
         fetchQuestions()
     }
 
-    // Menggunakan QuizSplashScreen untuk countdown
-    QuizSplashScreen(onFinish = {
-        isQuizStarted = true
-    })
-
-
+    // Fungsi untuk melanjutkan soal berikutnya
     fun goToNextQuestion() {
         if (currentQuestionIndex < questions.size - 1) {
             currentQuestionIndex++
@@ -96,6 +104,7 @@ fun QuizAppSD(onBackPressed: () -> Unit) {
         }
     }
 
+    // Timer countdown untuk soal
     LaunchedEffect(currentQuestionIndex) {
         while (timeLeft > 0 && !answerShown) {
             delay(1000L)
@@ -126,9 +135,7 @@ fun QuizAppSD(onBackPressed: () -> Unit) {
                 QuizSplashScreen(onFinish = {
                     isQuizStarted = true
                 })
-                //CountdownScreen(readyText)
             } else {
-                // Setelah countdown selesai, tampilkan soal kuis
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -194,8 +201,10 @@ fun QuizAppSD(onBackPressed: () -> Unit) {
                                     } else {
                                         incorrectAnswers++
                                     }
-                                    scope.launch {
-                                        delay(1000L)
+
+                                    // Menggunakan coroutineScope untuk menunggu selama 3 detik
+                                    coroutineScope.launch {
+                                        delay(3000L)  // Delay untuk menunjukkan jawaban
                                         goToNextQuestion()
                                     }
                                 }
@@ -209,22 +218,8 @@ fun QuizAppSD(onBackPressed: () -> Unit) {
     }
 }
 
-@Composable
-fun CountdownScreen(readyText: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF9C27B0)),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = readyText,
-            fontSize = 40.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
-        )
-    }
-}
+
+
 
 @Composable
 fun ResultScreen(score: Int, correctAnswers: Int, incorrectAnswers: Int) {
@@ -232,24 +227,29 @@ fun ResultScreen(score: Int, correctAnswers: Int, incorrectAnswers: Int) {
     val sharedPref = context.getSharedPreferences("QuizPrefs", Context.MODE_PRIVATE)
     val editor = sharedPref.edit()
 
-// Simpan data level (misalnya, level 1)
-    editor.putInt("level1_score", score)
-    //editor.putInt("level1_points", score) // Misalnya, kita anggap poin = skor
-    editor.putInt("level1_correct_answers", correctAnswers)
-    editor.putInt("level1_incorrect_answers", incorrectAnswers)
-    editor.apply()
-
-// Menghitung akurasi
+    // Menghitung akurasi
     val accuracy = if (correctAnswers + incorrectAnswers > 0) {
         (correctAnswers.toFloat() / (correctAnswers + incorrectAnswers)) * 100
     } else {
         0f
     }
 
-// Simpan akurasi (persentase kebenaran)
-    editor.putFloat("level1_accuracy", accuracy)
-    editor.apply()
+    // Simpan data ke Firebase
+    val userId = FirebaseAuth.getInstance().currentUser?.uid
+    val database = FirebaseDatabase.getInstance().getReference("users").child(userId ?: "unknown")
+    val userScore = UserScore(score, correctAnswers, incorrectAnswers, accuracy)
 
+    // Menyimpan data ke Firebase
+    database.child("quizResults").push().setValue(userScore)
+        .addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                Log.d("Firebase", "Skor berhasil disimpan ke Firebase")
+            } else {
+                Log.e("Firebase", "Gagal menyimpan skor", task.exception)
+            }
+        }
+
+    // Layout untuk hasil
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -266,6 +266,7 @@ fun ResultScreen(score: Int, correctAnswers: Int, incorrectAnswers: Int) {
         )
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Box untuk menampilkan skor
         Box(
             modifier = Modifier
                 .size(120.dp)
@@ -279,8 +280,10 @@ fun ResultScreen(score: Int, correctAnswers: Int, incorrectAnswers: Int) {
                 color = Color.Black
             )
         }
+
         Spacer(modifier = Modifier.height(24.dp))
 
+        // Menampilkan jumlah jawaban benar dan salah
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
@@ -310,23 +313,51 @@ fun ResultScreen(score: Int, correctAnswers: Int, incorrectAnswers: Int) {
                 )
             }
         }
+
         Spacer(modifier = Modifier.height(24.dp))
 
+        // Menampilkan akurasi
+        Text(
+            text = "Accuracy: ${accuracy.toInt()}%",
+            fontSize = 18.sp,
+            color = Color.White,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Tombol untuk lanjut ke level berikutnya atau mengulang soal
+        if (accuracy >= 70) {
+            // Tombol untuk lanjut ke level berikutnya
+            Button(
+                onClick = {
+                    // Logika untuk lanjut ke level berikutnya (misalnya ke level2)
+                    context.startActivity(Intent(context, QuizSMP::class.java)) // Menggunakan QuizSD untuk level 2
+                }
+            ) {
+                Text("Next Level")
+            }
+        } else {
+            // Tombol untuk mengulang soal
+            Button(
+                onClick = {
+                    // Logika untuk mengulang soal (kembali ke level yang sama)
+                    context.startActivity(Intent(context, QuizSD::class.java)) // Mengulang kuis
+                }
+            ) {
+                Text("Ulangi Kuis")
+            }
+        }
         Button(
             onClick = {
-                // Simpan skor ke SharedPreferences
-                val sharedPref = context.getSharedPreferences("QuizPrefs", Context.MODE_PRIVATE)
-                val currentPoints = sharedPref.getInt("userPoints", 0) // Ambil poin sebelumnya
-                sharedPref.edit().putInt("userPoints", currentPoints + score).apply()
-
-                // Arahkan ke layar Riwayat
-                context.startActivity(Intent(context, QuizHistoryActivity::class.java))
+                context.startActivity(Intent(context, QuizHistoryActivity::class.java)) // Menggunakan QuizSD untuk level 2
             }
         ) {
-            Text("Go to History")
+            Text("Riwayat Peringkat")
         }
     }
 }
+
 
 @Composable
 fun AnswerButtonSD(
@@ -336,12 +367,12 @@ fun AnswerButtonSD(
     showAnswer: Boolean,
     onClick: () -> Unit
 ) {
+    // Tentukan warna latar belakang berdasarkan status
     val backgroundColor = when {
-        //isSelected && showAnswer -> if (isCorrect) Color.Green else Color.Red
-        showAnswer && isCorrect -> Color.Green // Jawaban benar menjadi hijau
-        showAnswer && !isCorrect -> Color.Red  // Jawaban salah menjadi merah
-        //isSelected -> Color.LightGray  // Pilihan yang dipilih memberi warna abu-abu
-        else -> Color.White
+        showAnswer && isCorrect -> Color.Green // Jawaban benar berwarna hijau
+        showAnswer && !isCorrect -> Color.Red  // Jawaban salah berwarna merah
+        isSelected -> Color.LightGray          // Pilihan yang dipilih berwarna abu-abu
+        else -> Color.White                   // Warna default putih
     }
 
     TextButton(

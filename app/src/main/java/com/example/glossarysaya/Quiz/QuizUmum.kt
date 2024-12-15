@@ -1,18 +1,34 @@
 package com.example.glossarysaya.Quiz
 
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.glossarysaya.QuizHistoryActivity
+import com.example.glossarysaya.R
+import com.example.glossarysaya.UserScore
+import com.google.api.ResourceDescriptor
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -20,134 +36,316 @@ class QuizUmum : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            QuizAppUmum()
+            QuizAppUmum(onBackPressed = { finish() })
         }
     }
 }
 
 @Composable
-fun QuizAppUmum() {
-    val questions = listOf(
-        QuestionUmum("Apa nama ibu kota dari negara Prancis?", listOf("Berlin", "Madrid", "Paris", "Roma"), 2),
-        QuestionUmum("Apa nama planet yang terdekat dengan Matahari?", listOf("Mars", "Merkurius", "Venus", "Bumi"), 1),
-        QuestionUmum("Apa nama hewan khas Australia yang melompat?", listOf("Kanguru", "Koala", "Dingo", "Wombat"), 0),
-        QuestionUmum("Siapa penemu telepon?", listOf("Alexander Graham Bell", "Thomas Edison", "Nikola Tesla", "Michael Faraday"), 0),
-        QuestionUmum("Apa nama zat yang memberikan warna hijau pada tumbuhan?", listOf("Melanin", "Klorofil", "Karoten", "Hemoglobin"), 1),
-        QuestionUmum("Apa nama gunung tertinggi di dunia?", listOf("Gunung Everest", "Gunung Kilimanjaro", "Gunung Elbrus", "Gunung Denali"), 0),
-        QuestionUmum("Siapa pelukis terkenal yang melukis 'Starry Night'?", listOf("Leonardo da Vinci", "Vincent van Gogh", "Pablo Picasso", "Claude Monet"), 1),
-        QuestionUmum("Apa nama negara dengan jumlah penduduk terbanyak di dunia?", listOf("India", "Amerika Serikat", "Cina", "Indonesia"), 2),
-        QuestionUmum("Apa hasil dari 3 x 9?", listOf("27", "28", "29", "30"), 0),
-        QuestionUmum("Apa nama tulang terpanjang dalam tubuh manusia?", listOf("Tulang Paha", "Tulang Lengan", "Tulang Rusuk", "Tulang Belakang"), 0),
-        QuestionUmum("Apa nama hari libur nasional pada tanggal 1 Januari?", listOf("Hari Pendidikan", "Hari Tahun Baru", "Hari Kemerdekaan", "Hari Kartini"), 1),
-        QuestionUmum("Apa nama benda yang digunakan untuk membaca?", listOf("Meja", "Buku", "Pensil", "Lampu"), 1),
-        QuestionUmum("Apa nama logam yang biasanya digunakan untuk membuat uang koin?", listOf("Besi", "Perak", "Aluminium", "Tembaga"), 3),
-        QuestionUmum("Apa nama alat musik yang dimainkan dengan cara ditiup?", listOf("Gitar", "Piano", "Seruling", "Drum"), 2),
-        QuestionUmum("Apa nama samudra terbesar di dunia?", listOf("Samudra Atlantik", "Samudra Pasifik", "Samudra Hindia", "Samudra Arktik"), 1),
-        QuestionUmum("Apa nama hewan laut yang memiliki tentakel?", listOf("Ubur-ubur", "Ikan Paus", "Lumba-lumba", "Hiu"), 0),
-        QuestionUmum("Siapa penulis buku 'Harry Potter'?", listOf("J.K. Rowling", "Tolkien", "Stephen King", "George R.R. Martin"), 0),
-        QuestionUmum("Berapa hasil dari 100 ÷ 4?", listOf("20", "25", "30", "40"), 1),
-        QuestionUmum("Apa nama negara di Asia Tenggara yang tidak memiliki garis pantai?", listOf("Thailand", "Laos", "Vietnam", "Kamboja"), 1),
-        QuestionUmum("Apa nama benda yang digunakan untuk menyikat gigi?", listOf("Handuk", "Sikat Gigi", "Pisau", "Kaca"), 1),
-        QuestionUmum("Apa nama alat yang digunakan untuk memasak nasi?", listOf("Kompor", "Rice Cooker", "Penggorengan", "Oven"), 1),
-        QuestionUmum("Apa nama logam yang biasa digunakan pada kabel listrik?", listOf("Aluminium", "Tembaga", "Besi", "Perak"), 1),
-        QuestionUmum("Siapa presiden pertama Amerika Serikat?", listOf("Abraham Lincoln", "George Washington", "Thomas Jefferson", "Theodore Roosevelt"), 1),
-        QuestionUmum("Apa nama alat untuk mengukur suhu tubuh?", listOf("Termometer", "Barometer", "Anemometer", "Hygrometer"), 0),
-        QuestionUmum("Apa nama benda yang bisa menerangi jalan saat gelap?", listOf("Lampu Jalan", "Jam", "Kompor", "Meja"), 0),
-        QuestionUmum("Apa nama kendaraan yang berjalan di atas rel?", listOf("Bus", "Sepeda", "Kereta", "Truk"), 2),
-        QuestionUmum("Siapa tokoh yang dikenal sebagai Bapak Pendidikan Nasional Indonesia?", listOf("Ki Hajar Dewantara", "Soekarno", "Mohammad Hatta", "R.A. Kartini"), 0),
-        QuestionUmum("Apa nama olahraga yang menggunakan raket dan shuttlecock?", listOf("Tenis", "Bulu Tangkis", "Ping Pong", "Hoki"), 1),
-        QuestionUmum("Apa nama bahan makanan yang dibuat dari kedelai?", listOf("Tempe", "Roti", "Susu", "Keju"), 0),
-        QuestionUmum("Apa nama planet tempat manusia tinggal?", listOf("Mars", "Venus", "Bumi", "Saturnus"), 2),
-        QuestionUmum("Apa nama benda yang digunakan untuk melindungi kepala?", listOf("Jas Hujan", "Helm", "Topi", "Selimut"), 1),
-        QuestionUmum("Siapa penemu lampu pijar?", listOf("Alexander Graham Bell", "Thomas Edison", "Nikola Tesla", "Michael Faraday"), 1),
-        QuestionUmum("Apa nama festival cahaya terkenal di India?", listOf("Diwali", "Holi", "Songkran", "Loy Krathong"), 0),
-        QuestionUmum("Apa nama benda yang digunakan untuk menghapus tulisan?", listOf("Kertas", "Penghapus", "Kaca", "Lampu"), 1),
-        QuestionUmum("Apa nama hewan yang bisa hidup di air dan darat?", listOf("Amfibi", "Mamalia", "Reptil", "Serangga"), 0),
-        QuestionUmum("Apa warna pelangi yang berada di bagian bawah?", listOf("Merah", "Hijau", "Ungu", "Kuning"), 2),
-        QuestionUmum("Apa nama proses perubahan air menjadi uap?", listOf("Menguap", "Mencair", "Mengembun", "Membeku"), 0),
-        QuestionUmum("Apa nama planet yang dikenal sebagai 'Planet Cincin'?", listOf("Jupiter", "Uranus", "Saturnus", "Mars"), 2)
-    )
-
-
-
+fun QuizAppUmum(onBackPressed: () -> Unit) {
+    var questions by remember { mutableStateOf<List<QuizQuestion>>(emptyList()) }
     var currentQuestionIndex by remember { mutableStateOf(0) }
     var selectedAnswerIndex by remember { mutableStateOf<Int?>(null) }
     var answerShown by remember { mutableStateOf(false) }
     var timeLeft by remember { mutableStateOf(10) }
-    val scope = rememberCoroutineScope()
+    var score by remember { mutableStateOf(0) }
+    var correctAnswers by remember { mutableStateOf(0) }
+    var incorrectAnswers by remember { mutableStateOf(0) }
+    var isQuizFinished by remember { mutableStateOf(false) }
+    var isQuizStarted by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope() // Menyimpan coroutineScope
 
+    // Setelah kuis selesai di ResultScreen
+    val context = LocalContext.current
+    val sharedPref = context.getSharedPreferences("QuizPrefs", Context.MODE_PRIVATE)
+    val editor = sharedPref.edit()
+
+    // Simpan skor dan poin untuk setiap level
+    editor.putInt("level4_score", score)  // Misalnya, untuk level 1
+    editor.putInt("level4_points", score * 10) // Poin bisa berupa skor * faktor tertentu
+    editor.putInt("level4_correct_answers", correctAnswers)
+    editor.putInt("level4_incorrect_answers", incorrectAnswers)
+    editor.apply()
+
+    // Mengambil data soal dari Firebase
+    fun fetchQuestions() {
+        val database = FirebaseDatabase.getInstance().getReference("quizQuestions")
+        database.child("level4").addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val fetchedQuestions = mutableListOf<QuizQuestion>()
+                for (data in snapshot.children) {
+                    val question = data.getValue(QuizQuestion::class.java)
+                    question?.let { fetchedQuestions.add(it) }
+                }
+                questions = fetchedQuestions.shuffled().take(10)
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("FirebaseError", error.message)
+            }
+        })
+    }
+
+    // Memanggil fungsi fetch soal saat pertama kali Compose composable dipanggil
+    LaunchedEffect(Unit) {
+        fetchQuestions()
+    }
+
+    // Fungsi untuk melanjutkan soal berikutnya
     fun goToNextQuestion() {
         if (currentQuestionIndex < questions.size - 1) {
             currentQuestionIndex++
             selectedAnswerIndex = null
             answerShown = false
-            timeLeft = 10 // Reset timer
+            timeLeft = 10
+        } else {
+            isQuizFinished = true
         }
     }
 
+    // Timer countdown untuk soal
     LaunchedEffect(currentQuestionIndex) {
-        // Countdown timer
         while (timeLeft > 0 && !answerShown) {
-            delay(1000L) // 1 detik
+            delay(1000L)
             timeLeft--
         }
         if (!answerShown) {
             answerShown = true
-            delay(1000L) // Tampilkan jawaban benar selama 1 detik sebelum lanjut
+            incorrectAnswers++
+            delay(1000L)
             goToNextQuestion()
         }
     }
 
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(Color(0xFF4A148C), Color(0xFFCE93D8)),
+                )
+            )
+    ) {
+        if (isQuizFinished) {
+            ResultScreenUmum(score, correctAnswers, incorrectAnswers)
+        } else {
+            if (!isQuizStarted || questions.isEmpty()) {
+                // Tampilkan countdown dan READY!!! sebelum kuis dimulai
+                QuizSplashScreen(onFinish = {
+                    isQuizStarted = true
+                })
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        IconButton(onClick = { onBackPressed() }) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.arrow_back),
+                                contentDescription = "Kembali",
+                                tint = Color.White
+                            )
+                        }
+                        Spacer(modifier = Modifier.weight(1f))
+                        Image(
+                            painter = painterResource(R.drawable.logo),
+                            contentDescription = "Logo",
+                            modifier = Modifier.size(40.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Soal ${currentQuestionIndex + 1}/${questions.size}",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    LinearProgressIndicator(
+                        progress = timeLeft / 10f,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp),
+                        color = Color.Green
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = questions[currentQuestionIndex].question,
+                        fontSize = 20.sp,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    questions[currentQuestionIndex].options.forEachIndexed { index, answer ->
+                        AnswerButtonSD(
+                            answer = answer,
+                            isSelected = selectedAnswerIndex == index,
+                            isCorrect = answer == questions[currentQuestionIndex].correctAnswer,
+                            showAnswer = answerShown,
+                            onClick = {
+                                if (!answerShown) {
+                                    selectedAnswerIndex = index
+                                    answerShown = true
+                                    if (answer == questions[currentQuestionIndex].correctAnswer) {
+                                        score += 10
+                                        correctAnswers++
+                                    } else {
+                                        incorrectAnswers++
+                                    }
+
+                                    // Menggunakan coroutineScope untuk menunggu selama 3 detik
+                                    coroutineScope.launch {
+                                        delay(3000L)  // Delay untuk menunjukkan jawaban
+                                        goToNextQuestion()
+                                    }
+                                }
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+
+
+@Composable
+fun ResultScreenUmum(score: Int, correctAnswers: Int, incorrectAnswers: Int) {
+    val context = LocalContext.current
+    val sharedPref = context.getSharedPreferences("QuizPrefs", Context.MODE_PRIVATE)
+    val editor = sharedPref.edit()
+
+    // Menghitung akurasi
+    val accuracy = if (correctAnswers + incorrectAnswers > 0) {
+        (correctAnswers.toFloat() / (correctAnswers + incorrectAnswers)) * 100
+    } else {
+        0f
+    }
+
+    // Simpan data ke Firebase
+    val userId = FirebaseAuth.getInstance().currentUser?.uid
+    val database = FirebaseDatabase.getInstance().getReference("users").child(userId ?: "unknown")
+    val userScore = UserScore(score, correctAnswers, incorrectAnswers, accuracy)
+
+    // Menyimpan data ke Firebase
+    database.child("quizResults").push().setValue(userScore)
+        .addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                Log.d("Firebase", "Skor berhasil disimpan ke Firebase")
+            } else {
+                Log.e("Firebase", "Gagal menyimpan skor", task.exception)
+            }
+        }
+
+    // Layout untuk hasil
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(Color(0xFF9C27B0)) // Background ungu
             .padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Jumlah soal yang sudah dikerjakan
         Text(
-            text = "Soal ${currentQuestionIndex + 1}/${questions.size}",
+            text = "GLOSSARY",
             fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Box untuk menampilkan skor
+        Box(
+            modifier = Modifier
+                .size(120.dp)
+                .background(Color(0xFFD1C4E9), shape = MaterialTheme.shapes.medium),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "$score",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Menampilkan jumlah jawaban benar dan salah
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            Box(
+                modifier = Modifier
+                    .background(Color.Green, shape = MaterialTheme.shapes.medium)
+                    .padding(12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Correct: $correctAnswers",
+                    color = Color.White,
+                    fontSize = 16.sp
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .background(Color.Red, shape = MaterialTheme.shapes.medium)
+                    .padding(12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Incorrect: $incorrectAnswers",
+                    color = Color.White,
+                    fontSize = 16.sp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Menampilkan akurasi
+        Text(
+            text = "Accuracy: ${accuracy.toInt()}%",
+            fontSize = 18.sp,
+            color = Color.White,
             fontWeight = FontWeight.Bold
         )
-        Spacer(modifier = Modifier.height(16.dp))
 
-        // Progress bar untuk countdown detik
-        LinearProgressIndicator(
-            progress = timeLeft / 10f,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(8.dp),
-            color = Color.Green
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // Teks pertanyaan
-        Text(text = questions[currentQuestionIndex].question, fontSize = 20.sp)
-
-        Spacer(modifier = Modifier.height(16.dp))
-        questions[currentQuestionIndex].answers.forEachIndexed { index, answer ->
-            AnswerButtonUmum(
-                answer = answer,
-                isSelected = selectedAnswerIndex == index,
-                isCorrect = index == questions[currentQuestionIndex].correctAnswerIndex,
-                showAnswer = answerShown,
+        // Tombol untuk lanjut ke level berikutnya atau mengulang soal
+            // Tombol untuk mengulang soal
+            Button(
                 onClick = {
-                    if (!answerShown) {
-                        selectedAnswerIndex = index
-                        answerShown = true
-                        scope.launch {
-                            delay(1000L) // Tampilkan jawaban selama 1 detik sebelum lanjut
-                            goToNextQuestion()
-                        }
-                    }
+                    // Logika untuk mengulang soal (kembali ke level yang sama)
+                    context.startActivity(Intent(context, QuizUmum::class.java)) // Mengulang kuis
                 }
-            )
-            Spacer(modifier = Modifier.height(8.dp))
+            ) {
+                Text("Ulangi Kuis")
+            }
+        }
+        Button(
+            onClick = {
+                context.startActivity(Intent(context, QuizHistoryActivity::class.java)) // Menggunakan QuizSD untuk level 2
+            }
+        ) {
+            Text("Riwayat Peringkat")
         }
     }
-}
+
+
 
 @Composable
 fun AnswerButtonUmum(
@@ -157,26 +355,26 @@ fun AnswerButtonUmum(
     showAnswer: Boolean,
     onClick: () -> Unit
 ) {
+    // Tentukan warna latar belakang berdasarkan status
     val backgroundColor = when {
-        showAnswer && isCorrect -> Color.Green
-        showAnswer && !isCorrect && isSelected -> Color.Red
-        else -> Color.LightGray
+        showAnswer && isCorrect -> Color.Green // Jawaban benar berwarna hijau
+        showAnswer && !isCorrect -> Color.Red  // Jawaban salah berwarna merah
+        isSelected -> Color.LightGray          // Pilihan yang dipilih berwarna abu-abu
+        else -> Color.White                   // Warna default putih
     }
 
-    Button(
+    TextButton(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .background(backgroundColor),
-        enabled = !showAnswer
+            .background(backgroundColor, shape = MaterialTheme.shapes.medium)
+            .padding(16.dp)
     ) {
-        Text(text = answer, fontSize = 16.sp, color = Color.White)
+        Text(
+            text = answer,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black
+        )
     }
 }
-
-data class QuestionUmum(
-    val question: String,
-    val answers: List<String>,
-    val correctAnswerIndex: Int
-)
-

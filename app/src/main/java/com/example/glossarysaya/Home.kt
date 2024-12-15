@@ -214,30 +214,6 @@ fun MainScreen() {
             }
             Spacer(modifier = Modifier.height(16.dp))
 
-            /*Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                CategoryCard("Level 1", R.drawable.level1) {
-                    val intent = Intent(context, QuizSD::class.java)
-                    context.startActivity(intent)
-                }
-                CategoryCard("Level 2", R.drawable.level2) {
-                    // Navigasi ke halaman kuis level 2
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                CategoryCard("Level 3", R.drawable.level3) {
-                    // Navigasi ke halaman kuis level 3
-                }
-                CategoryCard("Level 4", R.drawable.level4) {
-                    // Navigasi ke halaman kuis level 4
-                }
-            }*/
 
             // Panah untuk menampilkan info aplikasi
 
