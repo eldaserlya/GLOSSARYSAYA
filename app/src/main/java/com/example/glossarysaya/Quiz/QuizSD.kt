@@ -236,8 +236,10 @@ fun ResultScreen(score: Int, correctAnswers: Int, incorrectAnswers: Int) {
 
     // Simpan data ke Firebase
     val userId = FirebaseAuth.getInstance().currentUser?.uid
+    val userName = FirebaseAuth.getInstance().currentUser?.displayName ?: "Anonymous" // Menangani jika nama kosong
+
     val database = FirebaseDatabase.getInstance().getReference("users").child(userId ?: "unknown")
-    val userScore = UserScore(score, correctAnswers, incorrectAnswers, accuracy)
+    val userScore = UserScore(score, correctAnswers, incorrectAnswers, accuracy, userName)
 
     // Menyimpan data ke Firebase
     database.child("quizResults").push().setValue(userScore)

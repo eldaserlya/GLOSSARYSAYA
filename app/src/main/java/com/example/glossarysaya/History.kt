@@ -213,7 +213,8 @@ fun QuizItem(title: String, score: Int, points: Int, accuracy: Int, imageRes: In
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .width((accuracy * 3).dp)
+                    //.width((accuracy * 3).dp)
+                    .fillMaxWidth(accuracy / 100f)
                     .background(Color(0xFF673AB7), shape = RoundedCornerShape(10.dp))
             ) {
                 Text(

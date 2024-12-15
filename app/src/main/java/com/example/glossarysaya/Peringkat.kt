@@ -1,5 +1,6 @@
 package com.example.glossarysaya
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -12,7 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,6 +26,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.glossarysaya.ui.theme.GLOSSARYSAYATheme
+import com.google.firebase.database.*
+
+data class UserRank(val name: String, val score: Int, val imageRes: Int = R.drawable.wajah)
 
 class PeringkatActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,20 +43,54 @@ class PeringkatActivity : ComponentActivity() {
 
 @Composable
 fun PeringkatScreen() {
+    val context = LocalContext.current
+    val sharedPref = context.getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
+    val userName = sharedPref.getString("user_name", "Unknown") ?: "Unknown" // Ambil nama pengguna dari SharedPreferences
+    val userScore = sharedPref.getInt("user_score", 0) // Ambil skor pengguna
+
+    val database = FirebaseDatabase.getInstance().reference.child("users")
+    var userRanks by remember { mutableStateOf(listOf<UserRank>()) }
+
+    LaunchedEffect(Unit) {
+        // Mengambil data dari Firebase dan mengurutkan berdasarkan poin tertinggi
+        database.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val ranks = mutableListOf<UserRank>()
+                for (userSnapshot in snapshot.children) {
+                    val name = userSnapshot.child("name").getValue(String::class.java) ?: "Unknown"
+                    // Mengambil score dari quizResults
+                    val score = userSnapshot.child("quizResults").children
+                        .mapNotNull { it.child("score").getValue(Int::class.java) }
+                        .firstOrNull() ?: 0
+                    ranks.add(UserRank(name, score))
+                }
+                // Mengurutkan peringkat berdasarkan score tertinggi
+                ranks.sortedByDescending { it.score }
+
+                // Menambahkan pengguna yang sedang login ke dalam peringkat
+                ranks.add(0, UserRank(userName, userScore))
+
+                userRanks = ranks
+            }
+
+            override fun onCancelled(error: DatabaseError) {}
+        })
+    }
+
     Scaffold(
-        bottomBar = { BottomNavigationBar() } // Menambahkan Bottom Navigation Bar
+        bottomBar = { BottomNavigationBar() }
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding) // Menambahkan inner padding agar konten tidak tertutup navbar
-                .verticalScroll(rememberScrollState()) // Mengaktifkan scrolling
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
                 .background(
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color(0xFF673AB7), Color(0xFF9C27B0))
+                        colors = listOf(Color(0xFF381E72), Color(0xFFFFFFFF))
                     )
                 )
-                .padding(16.dp) // Padding luar untuk estetika
+                .padding(16.dp)
         ) {
             // Header
             Text(
@@ -65,33 +103,48 @@ fun PeringkatScreen() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Peringkat Teratas
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceAround,
-                verticalAlignment = Alignment.Bottom
-            ) {
-                TopRankItem(name = "Elda", score = 7300, imageRes = R.drawable.wajah, rank = 2)
-                TopRankItem(name = "Diaz", score = 7900, imageRes = R.drawable.wajah, rank = 1)
-                TopRankItem(name = "Fadillah", score = 6800, imageRes = R.drawable.wajah, rank = 3)
-            }
+            // Peringkat Teratas (Top 3)
+            if (userRanks.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceAround,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    val topRanks = userRanks.take(3) // Mengambil 3 peringkat teratas
+                    topRanks.forEachIndexed { index, user ->
+                        TopRankItem(
+                            name = user.name,
+                            score = user.score,
+                            imageRes = user.imageRes,
+                            rank = index + 1
+                        )
+                    }
+                }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            // Peringkat Lain
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White, shape = RoundedCornerShape(20.dp))
-                    .padding(16.dp)
-            ) {
-                RankItem(rank = 4, name = "Chandra", score = 6700, imageRes = R.drawable.wajah)
-                RankItem(rank = 5, name = "Dina", score = 6300, imageRes = R.drawable.wajah)
-                RankItem(rank = 6, name = "Faulah", score = 6050, imageRes = R.drawable.wajah)
-                RankItem(rank = 7, name = "Dayinta", score = 5900, imageRes = R.drawable.wajah)
-                RankItem(rank = 8, name = "Dwi", score = 5400, imageRes = R.drawable.wajah)
-                RankItem(rank = 9, name = "Serlya", score = 5210, imageRes = R.drawable.wajah)
-                RankItem(rank = 10, name = "Azkha", score = 5030, imageRes = R.drawable.wajah)
+                // Peringkat Lain (Rank lain setelah top 3)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.White, shape = RoundedCornerShape(20.dp))
+                        .padding(16.dp)
+                ) {
+                    userRanks.drop(3).forEachIndexed { index, user ->  // Mengambil data peringkat setelah top 3
+                        RankItem(
+                            rank = index + 4,
+                            name = user.name,
+                            score = user.score,
+                            imageRes = user.imageRes
+                        )
+                    }
+                }
+            } else {
+                Text(
+                    text = "Memuat data peringkat...",
+                    color = Color.White,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
             }
         }
     }
@@ -205,3 +258,4 @@ fun BottomNavigationBar() {
         }
     }
 }
+
