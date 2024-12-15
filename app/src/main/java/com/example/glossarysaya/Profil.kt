@@ -1,6 +1,7 @@
 package com.example.glossarysaya
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -25,6 +26,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.rememberAsyncImagePainter
 import com.example.glossarysaya.ui.theme.GLOSSARYSAYATheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
@@ -60,10 +62,18 @@ fun ProfileScreen() {
         Text(
             text = "PROFIL",
             color = Color.White,
-            fontSize = 20.sp,
+            fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(top = 16.dp)
+            modifier = Modifier.padding(top = 32.dp)
         )
+
+        /*// Garis di bawah judul "PROFIL"
+        Divider(
+            color = Color.White, //warna garis
+            thickness = 2.dp,
+            modifier = Modifier.padding(bottom = 6.dp)
+        )*/
+
         ProfileCard()
         ProfilBottomNavigationBar()
     }
@@ -107,12 +117,13 @@ fun ProfileCard() {
             },
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .size(30.dp)
+                .size(40.dp) // Ukuran IconButton
         ) {
             Icon(
-                painter = painterResource(id = R.drawable.edit),
+                painter = painterResource(id = R.drawable.editnote),
                 contentDescription = "Edit Profile",
                 tint = Color.Black,
+                modifier = Modifier.size(40.dp) // Ukuran Icon di dalam IconButton
             )
         }
 
@@ -127,7 +138,18 @@ fun ProfileCard() {
                     .clip(CircleShape)
                     .background(Color.White)
             ) {
-                Image(
+                // Menampilkan gambar profil dari Firestore
+                val imageUri = userProfile.value?.profileImage?.let { Uri.parse(it) }
+                imageUri?.let {
+                    Image(
+                        painter = rememberAsyncImagePainter(it),
+                        contentDescription = "Profile Picture",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(100.dp)
+                            .clip(CircleShape)
+                    )
+                } ?: Image(
                     painter = painterResource(id = R.drawable.wajah),
                     contentDescription = "Profile Picture",
                     contentScale = ContentScale.Crop,
@@ -140,7 +162,7 @@ fun ProfileCard() {
 
             userProfile.value?.let { user ->
                 ProfileInfoBox(text = user.name ?: "Tidak diketahui")
-                ProfileInfoBox(text = user.birthDate ?: "Tidak diketahui")
+                ProfileInfoBox(text = user.dob ?: "Tidak diketahui")
                 ProfileInfoBox(text = user.gender ?: "Tidak diketahui")
                 ProfileInfoBox(text = user.email ?: "Tidak diketahui")
                 ProfileInfoBox(text = "${user.points} Poin")
@@ -218,8 +240,9 @@ fun ProfilBottomNavigationBar() {
 
 data class UserProfile(
     val name: String? = null,
-    val birthDate: String? = null,
+    val dob: String? = null,
     val gender: String? = null,
     val email: String? = null,
-    val points: Int = 0
+    val points: Int = 0,
+    val profileImage: String? = null // Tambahkan properti untuk gambar profil
 )
