@@ -4,10 +4,10 @@
     <selectionStates>
       <SelectionState runConfigName="app">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2024-12-13T06:53:51.835935300Z">
+        <DropdownSelection timestamp="2024-12-16T01:13:21.872834700Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\ACER\.android\avd\Pixel_8_Pro_API_34.avd" />
+              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\ACER\.android\avd\Pixel_8a_API_35.avd" />
             </handle>
           </Target>
         </DropdownSelection>
@@ -16,6 +16,7 @@
       <SelectionState runConfigName="ProfilActivity">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
+<<<<<<< HEAD
       <SelectionState runConfigName="PeringkatActivity">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
@@ -28,6 +29,8 @@
       <SelectionState runConfigName="QuizHistoryActivity">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
+=======
+>>>>>>> e666130b9fb1c8a6f78ea42a82ef87155d44c86f
     </selectionStates>
   </component>
 </project>

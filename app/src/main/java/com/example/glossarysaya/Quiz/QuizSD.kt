@@ -227,6 +227,14 @@ fun ResultScreen(score: Int, correctAnswers: Int, incorrectAnswers: Int) {
     val sharedPref = context.getSharedPreferences("QuizPrefs", Context.MODE_PRIVATE)
     val editor = sharedPref.edit()
 
+    // Mengambil data dari SharedPreferences
+    val level1Score = sharedPref.getInt("level1_score", 0) // Default 0 jika tidak ada
+    val level1Points = sharedPref.getInt("level1_points", 0)
+
+    // Tampilkan skor level 1 jika diperlukan
+    Log.d("SharedPreferences", "Level 1 Score: $level1Score")
+    Log.d("SharedPreferences", "Level 1 Points: $level1Points")
+
     // Menghitung akurasi
     val accuracy = if (correctAnswers + incorrectAnswers > 0) {
         (correctAnswers.toFloat() / (correctAnswers + incorrectAnswers)) * 100
