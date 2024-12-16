@@ -58,19 +58,18 @@ fun PeringkatScreen() {
                 val ranks = mutableListOf<UserRank>()
                 for (userSnapshot in snapshot.children) {
                     val name = userSnapshot.child("name").getValue(String::class.java) ?: "Unknown"
-                    // Mengambil score dari quizResults
+                    // Mengambil skor dari quizResults
                     val score = userSnapshot.child("quizResults").children
                         .mapNotNull { it.child("score").getValue(Int::class.java) }
                         .firstOrNull() ?: 0
                     ranks.add(UserRank(name, score))
                 }
-                // Mengurutkan peringkat berdasarkan score tertinggi
-                ranks.sortedByDescending { it.score }
 
-                // Menambahkan pengguna yang sedang login ke dalam peringkat
-                ranks.add(0, UserRank(userName, userScore))
+                // Tambahkan pengguna yang sedang login ke daftar
+                ranks.add(UserRank(userName, userScore))
 
-                userRanks = ranks
+                // Urutkan peringkat berdasarkan skor tertinggi
+                userRanks = ranks.sortedByDescending { it.score }
             }
 
             override fun onCancelled(error: DatabaseError) {}
