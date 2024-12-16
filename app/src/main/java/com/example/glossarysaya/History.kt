@@ -59,7 +59,7 @@ fun QuizHistoryScreen() {
     val totalPoints = (level1Data.points + level2Data.points + level3Data.points + level4Data.points) / 10
 
     // Simpan total skor ke SharedPreferences jika perlu
-    sharedPref.edit().putInt("total_score", totalScore).apply()
+    sharedPref.edit().putInt("total_points", totalPoints).apply()
 
     Scaffold(
         bottomBar = { HistoryBottomNavigationBar() }

@@ -1,5 +1,6 @@
 package com.example.glossarysaya
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -88,6 +89,11 @@ fun ProfileCard() {
 
     val userProfile = remember { mutableStateOf<UserProfile?>(null) }
 
+    // Ambil total poin dari SharedPreferences
+    val sharedPref = context.getSharedPreferences("QuizPrefs", Context.MODE_PRIVATE)
+    val totalPoints = sharedPref.getInt("total_points", 0)
+
+
     LaunchedEffect(Unit) {
         firestore.collection("users").document(userId ?: "")
             .get()
@@ -166,7 +172,8 @@ fun ProfileCard() {
                 ProfileInfoBox(text = user.dob ?: "Tidak diketahui")
                 ProfileInfoBox(text = user.gender ?: "Tidak diketahui")
                 ProfileInfoBox(text = user.email ?: "Tidak diketahui")
-                ProfileInfoBox(text = "${user.points} Poin")
+                // Tampilkan total poin yang diambil dari SharedPreferences
+                ProfileInfoBox(text = "${totalPoints} Poin")
             } ?: run {
                 Text(text = "Memuat...", color = Color.Gray)
             }
