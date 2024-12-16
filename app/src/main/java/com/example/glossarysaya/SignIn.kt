@@ -28,6 +28,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.google.firebase.auth.FirebaseAuth
 import android.content.Intent
+import androidx.compose.ui.input.key.Key.Companion.Home
 import com.example.glossaryy.MainActivity
 import com.google.firebase.firestore.FirebaseFirestore
 
