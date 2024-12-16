@@ -2,6 +2,7 @@ package com.example.glossarysaya
 
 import android.app.DatePickerDialog
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -248,7 +249,9 @@ fun ProfilEditCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
-                onClick = { saveUserProfile(name, dateOfBirth, gender, profileImagePath, context) },
+                onClick = {
+                    saveUserProfile(name, dateOfBirth, gender, profileImagePath, context)
+                },
                 colors = ButtonDefaults.buttonColors(Color(0xFF6A1B9A)),
                 shape = RoundedCornerShape(50),
                 modifier = Modifier.fillMaxWidth()
@@ -307,6 +310,9 @@ fun saveUserProfile(name: String, dateOfBirth: String, gender: String, imagePath
     userRef.set(userProfile, SetOptions.merge()).addOnCompleteListener { task ->
         if (task.isSuccessful) {
             Toast.makeText(context, "Profil berhasil disimpan", Toast.LENGTH_SHORT).show()
+            // Navigate to ProfilActivity
+            val intent = Intent(context, ProfilActivity::class.java)
+            context.startActivity(intent)
         } else {
             Toast.makeText(context, "Gagal menyimpan profil", Toast.LENGTH_SHORT).show()
         }
